@@ -1,0 +1,1 @@
+Dependencies = "datasets", "torch", "transformers", "scipy", "scikit-learn"
