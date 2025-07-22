@@ -5,21 +5,16 @@ import pandas as pd
 from torch.utils.data import Dataset
 import torch
 import evaluate #requires ['scipy', 'scikit-learn']
+from torch.utils.data import DataLoader
+import os
 
 #Load the QNLI dataset
 raw_dataset = load_dataset("glue", "qnli")
-
-#Print the keys of the dataset to see available splits
-print("Available splits in the dataset:")
-# print(raw_dataset.keys())
 
 #Convert the dataset to pandas DataFrames for easier manipulation
 train_df = raw_dataset["train"].to_pandas()
 val_df   = raw_dataset["validation"].to_pandas()
 test_df  = raw_dataset["test"].to_pandas()
-
-# print("Train DataFrame:")
-# print(train_df.head())  
 
 # Initialize tokenizer and model
 model_name = "distilbert-base-uncased"
@@ -46,6 +41,14 @@ test_encodings = tokenize_function(test_df)
 # print("Tokenized Test Encodings:")
 # print(test_encodings)
 
+# with open(r"qnli-question-answering//src//qnli_question_answering//results//encodings.txt", "w") as f:
+#     f.write("Train encodings:\n")
+#     f.write(str(train_encodings))
+#     f.write("\nValidation encodings:\n")
+#     f.write(str(val_encodings))
+#     f.write("\nTest encodings:\n")  
+#     f.write(str(test_encodings))
+
 # train_df = train_df.sample(frac=0.5, random_state=42).reset_index(drop=True)
 # print(f"Subsetted Train DF: {len(train_df)} rows (from {len(train_df)} total)")
 
@@ -53,9 +56,6 @@ class QNLIDataset(Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
         self.labels = labels
-
-    def __len__(self):
-        return len(self.labels)
 
     def __getitem__(self, idx):
         item = {key: tensor[idx] for key, tensor in self.encodings.items()}
@@ -65,8 +65,10 @@ class QNLIDataset(Dataset):
 train_dataset = QNLIDataset(train_encodings, train_df['label'])
 eval_dataset  = QNLIDataset(val_encodings, val_df['label'])
 
+print(train_dataset)
+breakpoint()
 
-# 6. Load evaluation metric
+# Load evaluation metric
 metric = evaluate.load("glue", "qnli")
 
 def compute_metrics(eval_pred):
@@ -74,7 +76,7 @@ def compute_metrics(eval_pred):
     preds = np.argmax(logits, axis=-1)
     return metric.compute(predictions=preds, references=labels)
 
-# 7. Define training arguments
+# Define training arguments
 training_args = TrainingArguments(
     output_dir="./results-qnli-entailment",
     eval_strategy="epoch",
@@ -88,7 +90,7 @@ training_args = TrainingArguments(
     logging_steps=50,
 )
 
-# 8. Initialize Trainer
+#Initialize Trainer
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -97,16 +99,26 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
 )
 
-# 9. Train the model
-# trainer.train()
+#Train the model
+trainer.train()
 
-checkpoint_path = "./results-qnli-entailment/checkpoint-500"
+checkpoint_path = "./results-qnli-entailment/checkpoint-19641"
+# Check if the checkpoint exists
+if not os.path.exists(checkpoint_path):
+    print(f"Checkpoint {checkpoint_path} does not exist. Training from scratch.")
 trainer.train(resume_from_checkpoint=checkpoint_path)
 
-# 10. Evaluate on validation set
+#Evaluate on validation set
 eval_results = trainer.evaluate()
 print("Validation results:", eval_results)
 
-# 11. Save the fine-tuned model and tokenizer
+# Save validation results to a file
+with open(r"src\qnli_question_answering\results\validation_results.txt", "w") as f:
+    f.write("Validation Results:\n")
+    for key, value in eval_results.items():
+        f.write(f"{key}: {value}\n")
+
+#Save the fine-tuned model and tokenizer
 model.save_pretrained("./qnli_entailment_model")
 tokenizer.save_pretrained("./qnli_entailment_model")
+

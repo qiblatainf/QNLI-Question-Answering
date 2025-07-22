@@ -1,0 +1,7 @@
+Validation Results:
+eval_loss: 0.3957499563694
+eval_accuracy: 0.879919458173165
+eval_runtime: 261.9911
+eval_samples_per_second: 20.852
+eval_steps_per_second: 1.305
+epoch: 3.0

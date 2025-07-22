@@ -1,0 +1,6 @@
+archive/
+__pycache__/
+dataset/
+qnli_entailment_model/
+results-qnli-entailment/
+
